@@ -8,7 +8,7 @@ def capture_screenshot():
     """Capture a screenshot of a specific rectangle."""
     with mss.mss() as sct:
         # Define the region to capture
-        region = {"top": 200, "left": 350, "width": 1120, "height": 600}
+        region = {"top": 200, "left": 350, "width": 1120, "height": 580}
         screenshot = sct.grab(region)
         # Convert the screenshot to a PIL image for processing
         img = Image.frombytes("RGB", screenshot.size, screenshot.rgb)

@@ -74,6 +74,7 @@ def monitor_for_button_and_type(numbers):
                 # Wait a third of a second and restart the entire program
                 time.sleep(0)
                 print("Restarting the program...")
+                print("\n" * 100)
                 main()  # Restart the program by calling the main function
 
 def main():
