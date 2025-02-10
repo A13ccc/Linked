@@ -32,7 +32,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pygame-web-build
-          path: dist/
+          path: build/web/
 
   deploy:
     needs: build
@@ -47,10 +47,10 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pygame-web-build
-          path: dist/
+          path: build/web/
 
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
-          folder: dist
+          folder: build/web
