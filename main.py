@@ -21,7 +21,7 @@ COLORS = {
 }
 
 clock = pygame.time.Clock()
-FPS = 60
+FPS = 4096 * 200
 def transition_to_next_level():
     global current_level_num, left_level, right_level, player1, player2
 
@@ -65,11 +65,12 @@ class Button:
         print(self.positions)
         for x, y in self.positions:
             color = (200, 100, 50) if not self.pressed else (100, 50, 25)  # Change color when pressed
-            pygame.draw.rect(screen, color, (x, y, self.width, self.height))
+            pygame.draw.rect(screen, color, (x + 3, y - 20, self.width, self.height))
+            pygame.draw.rect(screen, COLORS["button_bottom"], (x, y - 10, self.width + 5, self.height - 3))
 
     def check_collision(self, player):
         for x, y in self.positions:
-            button_rect = pygame.Rect(x, y, self.width, self.height)
+            button_rect = pygame.Rect(x, y - 10, self.width + 5, self.height)
             if player.rect.colliderect(button_rect):
                 self.pressed = True
                 self.on_press()
@@ -77,8 +78,6 @@ class Button:
     def on_press(self):
         print(f"Button pressed on Level {self.level_num} ({self.side} side)!")
 
-
-    
 
 class Level:
     def __init__(self, platforms, goal_y, side, num=None, buttons=[]):
@@ -115,6 +114,7 @@ class Level:
         self.completed = False
         self.active = False
 
+
 class Player:
     def __init__(self, x, y, image_path, num):
         self.pos = pygame.Vector2(x, y)
@@ -124,10 +124,10 @@ class Player:
         self.image = pygame.transform.scale(self.image, self.size)  # Optionally scale the image to fit size
         self.vel_y = 0
         self.vel_x = 0
-        self.move_speed = 4
-        self.gravity = 0.05
+        self.move_speed = 6
+        self.gravity = 0.09
         self.gravity_on = True
-        self.jump_power = -3.5
+        self.jump_power = -4.7
         self.on_ground = False
         self.on_platform = False
         self.on_wall = [False, 'None', 0]
@@ -289,18 +289,20 @@ levels = {
             (495, 340, 655, 340),
             (475, 455, 620, 455),
             (500, 500, 700, 500)
-        ],
-        'buttons': {  # Add the button definitions here for this level
-            'left': [(10, 530)],
-            'right': [(475, 455)]
-        }
+        ]
     },
     'level2': {
         'left': [
             (10, 530, 180, 530)
         ],
+        'left_hidden': [
+            (10, 530, 180, 530)
+        ],
         'right': [
             (475, 455, 620, 455)
+        ],
+        'right_hidden': [
+            ()
         ],
         'buttons': {  # Add the button definitions here for this level
             'left': [(10, 530)],
@@ -370,9 +372,12 @@ def check_goal(player1, player2, level):
         print(f'Went up to level {current_level_num + 1}!')
         transition_to_next_level(buttons=levels)
 
+buttons_left = levels[f'level1'].get('buttons', {}).get('left', [])
+buttons_right = levels[f'level1'].get('buttons', {}).get('right', [])
 
 async def main():
-    global current_level_num, left_level, right_level, player1, player2, previous_level_num, floor, max_levels, levels, FPS
+    global current_level_num, left_level, right_level, player1, player2, previous_level_num, floor, max_levels, levels, FPS, buttons_left, buttons_right
+
 
     # Game loop
     game_active = True
@@ -447,10 +452,20 @@ async def main():
             if current_level_num <= max_levels:
             
                 transition_to_next_level(buttons=levels)
+                buttons_left = levels[f'level{current_level_num}'].get('buttons', {}).get('left', [])
+                buttons_right = levels[f'level{current_level_num}'].get('buttons', {}).get('right', [])
 
             else:
                 print("You beat all levels!")
                 game_active = False
+
+        # Button Collision
+        button_col_left = Button(buttons_left, current_level_num, "left")
+        button_col_right = Button(buttons_right, current_level_num, "right")
+
+        # Check button collisions
+        button_col_left.check_collision(player1)
+        button_col_right.check_collision(player2)
 
         # Draw dividing line
         pygame.draw.line(screen, COLORS['divider'], (WINDOW_SIZE[0] // 2, 0), (WINDOW_SIZE[0] // 2, WINDOW_SIZE[1]), 5)
