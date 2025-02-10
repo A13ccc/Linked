@@ -1,5 +1,6 @@
 import pygame
 import sys
+import asyncio
 
 pygame.init()
 
@@ -15,35 +16,87 @@ COLORS = {
     'player2': (48, 63, 159),   # Blue
     'platform': (67, 160, 71),  # Green
     'divider': (33, 33, 33),    # Dark
+    'button_top': (255, 215, 0), # Gold
+    'button_bottom': (128, 128, 128) # Gray
 }
 
 clock = pygame.time.Clock()
-FPS = 180  # Standard 60fps is fine
+FPS = 60
+def transition_to_next_level():
+    global current_level_num, left_level, right_level, player1, player2
 
+    player1.gravity_on = True
+    player2.gravity_on = True
+
+    current_level_num += 1
+    if current_level_num <= max_levels:
+        # Move players above the screen for smooth transition
+        player1.pos.y = WINDOW_SIZE[1] + 40
+        player2.pos.y = WINDOW_SIZE[1] + 40
+
+        # Load next level
+        left_level = Level(platforms=levels[f'level{current_level_num}']['left'],
+                           goal_y=0, side='left', num=current_level_num)
+        right_level = Level(platforms=levels[f'level{current_level_num}']['right'],
+                            goal_y=0, side='right', num=current_level_num)
+        left_level.activate()
+        right_level.activate()
+
+        player1.vel_y = -10  # Simulate jumping up 
+        player2.vel_y = -10
+
+    else:
+        print("You beat all levels!")
+        pygame.quit()
+        sys.exit()
 previous_level_num = 0
 floor = 600
 
 class Button:
-    def __init__(self, level_num):
+    def __init__(self, button_positions, level_num, side):
         self.pressed = False
+        self.positions = button_positions  # List of (x, y) tuples
+        self.level_num = level_num
+        self.side = side
+        self.width = 20
+        self.height = 10
 
-    def check_col(self):
-        if not self.pressed:
-            pass
+    def draw(self, screen):
+        print(self.positions)
+        for x, y in self.positions:
+            color = (200, 100, 50) if not self.pressed else (100, 50, 25)  # Change color when pressed
+            pygame.draw.rect(screen, color, (x, y, self.width, self.height))
+
+    def check_collision(self, player):
+        for x, y in self.positions:
+            button_rect = pygame.Rect(x, y, self.width, self.height)
+            if player.rect.colliderect(button_rect):
+                self.pressed = True
+                self.on_press()
+
+    def on_press(self):
+        print(f"Button pressed on Level {self.level_num} ({self.side} side)!")
+
+
     
 
 class Level:
-    def __init__(self, platforms, goal_y, side, num=None):
+    def __init__(self, platforms, goal_y, side, num=None, buttons=[]):
         self.goal_y = goal_y
         self.side = side
         self.platforms = platforms
         self.completed = False
         self.active = False
+        self.buttons = [Button(button_positions=buttons, level_num=num, side=side) for button in buttons]  # Create button instances
 
     def draw(self, screen):
         # Draw platforms and goal line
         for platform in self.platforms:
             pygame.draw.line(screen, COLORS['platform'], (platform[0], platform[1]), (platform[2], platform[3]), 10)
+
+        # Draw buttons
+        for button in self.buttons:
+            button.draw(screen)
         
         # Draw goal line in gold if active, gray if completed, hidden if neither
         if self.active:
@@ -71,7 +124,7 @@ class Player:
         self.image = pygame.transform.scale(self.image, self.size)  # Optionally scale the image to fit size
         self.vel_y = 0
         self.vel_x = 0
-        self.move_speed = 2
+        self.move_speed = 4
         self.gravity = 0.05
         self.gravity_on = True
         self.jump_power = -3.5
@@ -222,7 +275,7 @@ class Player:
 levels = {
     'level1': {
         'left': [
-            (100, 70, 240, 70),    # Horizontal line from (100, 50) to (240, 50)
+            (100, 70, 240, 70),
             (120, 165, 290, 165),
             (135, 260, 265, 260),
             (155, 340, 315, 340),
@@ -236,32 +289,48 @@ levels = {
             (495, 340, 655, 340),
             (475, 455, 620, 455),
             (500, 500, 700, 500)
-        ]
+        ],
+        'buttons': {  # Add the button definitions here for this level
+            'left': [(10, 530)],
+            'right': [(475, 455)]
+        }
     },
-
     'level2': {
         'left': [
             (10, 530, 180, 530)
         ],
         'right': [
             (475, 455, 620, 455)
-        ]
+        ],
+        'buttons': {  # Add the button definitions here for this level
+            'left': [(10, 530)],
+            'right': [(475, 455)]
+        }
     }
 }
+
 
 # Initialize players and levels
 p1_spawn = 175
 p2_spawn = 586
 
-player1 = Player(p1_spawn, 600, './Linked - Alec/assets/images/players/player1.png', 1)
-player2 = Player(p2_spawn, 600, './Linked - Alec/assets/images/players/player2.png', 2)
+player1 = Player(p1_spawn, 600, './assets/images/players/player1.png', 1)
+player2 = Player(p2_spawn, 600, './assets/images/players/player2.png', 2)
 
 current_level = 'level1'
-level1_left = Level(platforms=levels[current_level]['left'], goal_y=0, side='left')
-level1_right = Level(platforms=levels[current_level]['right'], goal_y=0, side='right')
+left_level = Level(
+    platforms=levels[current_level]['left'],
+    goal_y=0, side='left', num=1,
+    buttons=levels[current_level].get('buttons', {}).get('left', [])
+)
+right_level = Level(
+    platforms=levels[current_level]['right'],
+    goal_y=0, side='right', num=1,
+    buttons=levels[current_level].get('buttons', {}).get('right', [])
+)
 
-def transition_to_next_level():
-    global current_level_num, left_level, right_level, player1, player2
+def transition_to_next_level(buttons=None):
+    global current_level_num, left_level, right_level, player1, player2, max_levels, levels
 
     player1.gravity_on = True
     player2.gravity_on = True
@@ -269,16 +338,22 @@ def transition_to_next_level():
     current_level_num += 1
     if current_level_num <= max_levels:
         # Move players above the screen for smooth transition
-        player1.pos.y = WINDOW_SIZE[1] + 40
-        player2.pos.y = WINDOW_SIZE[1] + 40
-        player1.vel_y = -10  # Simulate jumping up
-        player2.vel_y = -10
+        y_pos = 550
+
+        player1.pos.y = y_pos
+        player2.pos.y = y_pos
 
         # Load next level
-        left_level = Level(platforms=levels[f'level{current_level_num}']['left'],
-                           goal_y=0, side='left', num=current_level_num)
-        right_level = Level(platforms=levels[f'level{current_level_num}']['right'],
-                            goal_y=0, side='right', num=current_level_num)
+        left_level = Level(
+            platforms=levels[f'level{current_level_num}']['left'],
+            goal_y=0, side='left', num=current_level_num,
+            buttons=levels[f'level{current_level_num}'].get('buttons', {}).get('left', [])
+        )
+        right_level = Level(
+            platforms=levels[f'level{current_level_num}']['right'],
+            goal_y=0, side='right', num=current_level_num,
+            buttons=levels[f'level{current_level_num}'].get('buttons', {}).get('right', [])
+        )
         left_level.activate()
         right_level.activate()
 
@@ -288,101 +363,111 @@ def transition_to_next_level():
         sys.exit()
 
 
+
 # Check if players reached the goal
 def check_goal(player1, player2, level):
     if player1.rect.top <= level.goal_y and player2.rect.top <= level.goal_y:
         print(f'Went up to level {current_level_num + 1}!')
-        transition_to_next_level()
-
-# Game loop
-game_active = True
-current_level_num = 1
-max_levels = len(levels)
-
-# Initialize first level
-left_level = Level(platforms=levels[f'level{current_level_num}']['left'], 
-                  goal_y=0, side='left', num=current_level_num)
-right_level = Level(platforms=levels[f'level{current_level_num}']['right'],
-                   goal_y=0, side='right', num=current_level_num)
-left_level.activate()
-right_level.activate()
-
-while game_active:
-    clock.tick(FPS)
-    screen.fill(COLORS['bg'])
-
-    # Event handling
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            game_active = False
-
-    # Key handling
-    keys = pygame.key.get_pressed()
-    player1.move(keys, "left")
-    player2.move(keys, "right")
-
-    # Apply gravity
-    player1.apply_gravity()
-    player2.apply_gravity()
-
-    # Collision detection
-    player1.check_collision(left_level.platforms, 1)
-    player2.check_collision(right_level.platforms, 2)
-
-    if previous_level_num > 1:
-        previous_level_num = previous_level_num - current_level
-    else:
-        previous_level_num = 1
+        transition_to_next_level(buttons=levels)
 
 
-    if previous_level_num == 0:
-        previous_level_num = 1
-    
-    
-    # Handle falling to a previous level
-    if current_level_num != 1:
-        player1.fall_prev_level()
-        player2.fall_prev_level()
-    else:
-        player1.floor_detection(floor)
-        player2.floor_detection(floor)
+async def main():
+    global current_level_num, left_level, right_level, player1, player2, previous_level_num, floor, max_levels, levels, FPS
 
-    # Check for level completion
-    # Check for level completion (Moving Up)
-    if check_goal(player1, player2, left_level):
-        print(f"Level {current_level_num} Complete!")
-        left_level.complete()
-        right_level.complete()
-        
-        previous_level_num = current_level_num  # Store current level before advancing
-        current_level_num += 1
+    # Game loop
+    game_active = True
+    current_level_num = 1
+    max_levels = len(levels)
 
-        if current_level_num <= max_levels:
-            
-            # Load next level
-            left_level = Level(platforms=levels[f'level{current_level_num}']['left'],
-                            goal_y=0, side='left', num=current_level_num)
-            right_level = Level(platforms=levels[f'level{current_level_num}']['right'],
-                            goal_y=0, side='right', num=current_level_num)
-            left_level.activate()
-            right_level.activate()
+    # Initialize first level
+    left_level = Level(platforms=levels[f'level{current_level_num}']['left'], 
+                      goal_y=0, side='left', num=current_level_num)
+    right_level = Level(platforms=levels[f'level{current_level_num}']['right'],
+                       goal_y=0, side='right', num=current_level_num)
+    left_level.activate()
+    right_level.activate()
+
+    while game_active:
+        clock.tick(FPS)
+        screen.fill(COLORS['bg'])
+
+        # Event handling
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                game_active = False
+
+        # Key handling
+        keys = pygame.key.get_pressed()
+        player1.move(keys, "left")
+        player2.move(keys, "right")
+
+        # Apply gravity
+        player1.apply_gravity()
+        player2.apply_gravity()
+
+        # Collision detection
+        player1.check_collision(left_level.platforms, 1)
+        player2.check_collision(right_level.platforms, 2)
+
+        # Check button presses
+        for button in left_level.buttons:
+            button.check_collision(player1)
+        for button in right_level.buttons:
+            button.check_collision(player2)
+
+
+        if previous_level_num > 1:
+            previous_level_num = previous_level_num - current_level
         else:
-            print("You beat all levels!")
-            game_active = False
+            previous_level_num = 1
 
-    # Draw dividing line
-    pygame.draw.line(screen, COLORS['divider'], (WINDOW_SIZE[0] // 2, 0), (WINDOW_SIZE[0] // 2, WINDOW_SIZE[1]), 5)
 
-    # Draw players and level
-    player1.draw(screen)
-    player2.draw(screen)
+        if previous_level_num == 0:
+            previous_level_num = 1
+    
+    
+        # Handle falling to a previous level
+        if current_level_num != 1:
+            player1.fall_prev_level()
+            player2.fall_prev_level()
+        else:
+            player1.floor_detection(floor)
+            player2.floor_detection(floor)
 
-    left_level.draw(screen)
-    right_level.draw(screen)
+        # Check for level completion
+        # Check for level completion (Moving Up)
+        if check_goal(player1, player2, left_level):
+            print(f"Level {current_level_num} Complete!")
+            left_level.complete()
+            right_level.complete()
+        
+            previous_level_num = current_level_num  # Store current level before advancing
+            current_level_num += 1
 
-    # Update display
-    pygame.display.flip()
+            if current_level_num <= max_levels:
+            
+                transition_to_next_level(buttons=levels)
 
-# Quit Pygame
-pygame.quit()
-sys.exit()
+            else:
+                print("You beat all levels!")
+                game_active = False
+
+        # Draw dividing line
+        pygame.draw.line(screen, COLORS['divider'], (WINDOW_SIZE[0] // 2, 0), (WINDOW_SIZE[0] // 2, WINDOW_SIZE[1]), 5)
+
+        # Draw players and level
+        player1.draw(screen)
+        player2.draw(screen)
+
+        left_level.draw(screen)
+        right_level.draw(screen)
+
+        # Update display
+        pygame.display.flip()
+        await asyncio.sleep(0)
+
+    # Quit Pygame
+    pygame.quit()
+    sys.exit()
+
+asyncio.run(main())
