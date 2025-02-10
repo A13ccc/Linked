@@ -25,6 +25,9 @@ jobs:
       - name: Install pygbag
         run: pip install pygbag
 
+      - name: Remove Old Build
+        run: rm -rf build/web
+
       - name: Build Pygame App for Web
         run: pygbag --build .
 
