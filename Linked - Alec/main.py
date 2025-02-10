@@ -9,15 +9,55 @@ WINDOW_SIZE = (800, 600)
 screen = pygame.display.set_mode(WINDOW_SIZE)
 pygame.display.set_caption("Linked")
 
-# Colors I like
+# Colors
 COLORS = {
-    'bg': (245, 245, 245),      # Clean white-ish
-    'player1': (219, 58, 52),   # Red
-    'player2': (48, 63, 159),   # Blue
-    'platform': (67, 160, 71),  # Green
-    'divider': (33, 33, 33),    # Dark
-    'button_top': (255, 215, 0), # Gold
-    'button_bottom': (128, 128, 128) # Gray
+    'bg': (245, 245, 245),
+    'player1': (219, 58, 52),
+    'player2': (48, 63, 159),
+    'platform': (67, 160, 71),
+    'divider': (33, 33, 33),
+    'button_top': (255, 215, 0), 
+    'button_bottom': (128, 128, 128) 
+}
+
+# Levels
+levels = {
+    'level1': {
+        'left': [
+            (100, 70, 240, 70),
+            (120, 165, 290, 165),
+            (135, 260, 265, 260),
+            (155, 340, 315, 340),
+            (175, 455, 320, 455),
+            (100, 500, 240, 500)
+        ],
+        'right': [
+            (560, 70, 700, 70),
+            (520, 165, 690, 165),
+            (535, 260, 665, 260),
+            (495, 340, 655, 340),
+            (475, 455, 620, 455),
+            (500, 500, 700, 500)
+        ]
+    },
+    'level2': {
+        'left': [
+            (10, 530, 180, 530)
+        ],
+        'left_hidden': [
+            (200, 475, 375, 475)
+        ],
+        'right': [
+            (475, 455, 620, 455)
+        ],
+        'right_hidden': [
+            (675, 530, 800, 530)
+        ],
+        'buttons': {  # Add the button definitions here for this level
+            'left': [(10, 530)],
+            'right': [(475, 455)]
+        }
+    }
 }
 
 clock = pygame.time.Clock()
@@ -52,6 +92,32 @@ def transition_to_next_level():
 previous_level_num = 0
 floor = 600
 
+def show_platforms(level_num, button):
+    # Get hidden platforms for the current level
+    hidden_plat_left = levels[f'level{level_num}'].get('left_hidden', [])
+    hidden_plat_right = levels[f'level{level_num}'].get('right_hidden', [])
+
+    print(f"Hidden Platforms Left: {hidden_plat_left}")
+    print(f"Hidden Platforms Right: {hidden_plat_right}")
+
+    print(button)
+     # Add hidden platforms to visible platforms list
+    if button == 'right' and level_num == 2:
+        for platform in hidden_plat_left:
+            if platform not in left_level.platforms:
+                left_level.platforms.append(platform)
+    elif button == 'left' and level_num == 2:
+        for platform in hidden_plat_right:
+            # Draw the platform
+            pygame.draw.line(screen, COLORS['platform'], (platform[0], platform[1]), (platform[2], platform[3]), 10)
+            # Check collision with player2
+            if player2.rect.clipline((platform[0], platform[1]), (platform[2], platform[3])):
+                player2.on_platform = True
+                player2.on_ground = True
+                player2.pos.y = platform[1] - player2.rect.height
+                player2.vel_y = 0
+            
+
 class Button:
     def __init__(self, button_positions, level_num, side):
         self.pressed = False
@@ -62,23 +128,25 @@ class Button:
         self.height = 10
 
     def draw(self, screen):
-        print(self.positions)
         for x, y in self.positions:
             color = (200, 100, 50) if not self.pressed else (100, 50, 25)  # Change color when pressed
-            pygame.draw.rect(screen, color, (x, y, self.width, self.height))
+            pygame.draw.rect(screen, color, (x + 3, y - 20, self.width, self.height))
+            pygame.draw.rect(screen, COLORS["button_bottom"], (x, y - 10, self.width + 5, self.height - 3))
 
     def check_collision(self, player):
         for x, y in self.positions:
-            button_rect = pygame.Rect(x, y, self.width, self.height)
+            button_rect = pygame.Rect(x, y - 10, self.width + 5, self.height)
             if player.rect.colliderect(button_rect):
                 self.pressed = True
                 self.on_press()
 
     def on_press(self):
+        global current_level_num
+        global Levels
         print(f"Button pressed on Level {self.level_num} ({self.side} side)!")
+        if current_level_num == 2:
+            show_platforms(2, self.side)
 
-
-    
 
 class Level:
     def __init__(self, platforms, goal_y, side, num=None, buttons=[]):
@@ -115,6 +183,7 @@ class Level:
         self.completed = False
         self.active = False
 
+
 class Player:
     def __init__(self, x, y, image_path, num):
         self.pos = pygame.Vector2(x, y)
@@ -124,10 +193,10 @@ class Player:
         self.image = pygame.transform.scale(self.image, self.size)  # Optionally scale the image to fit size
         self.vel_y = 0
         self.vel_x = 0
-        self.move_speed = 4
-        self.gravity = 0.05
+        self.move_speed = 6
+        self.gravity = 0.09
         self.gravity_on = True
-        self.jump_power = -3.5
+        self.jump_power = -4.7
         self.on_ground = False
         self.on_platform = False
         self.on_wall = [False, 'None', 0]
@@ -271,45 +340,6 @@ class Player:
         screen.blit(self.image, self.rect)
 
 
-# Level Definitions
-levels = {
-    'level1': {
-        'left': [
-            (100, 70, 240, 70),
-            (120, 165, 290, 165),
-            (135, 260, 265, 260),
-            (155, 340, 315, 340),
-            (175, 455, 320, 455),
-            (100, 500, 240, 500)
-        ],
-        'right': [
-            (560, 70, 700, 70),
-            (520, 165, 690, 165),
-            (535, 260, 665, 260),
-            (495, 340, 655, 340),
-            (475, 455, 620, 455),
-            (500, 500, 700, 500)
-        ],
-        'buttons': {  # Add the button definitions here for this level
-            'left': [(10, 530)],
-            'right': [(475, 455)]
-        }
-    },
-    'level2': {
-        'left': [
-            (10, 530, 180, 530)
-        ],
-        'right': [
-            (475, 455, 620, 455)
-        ],
-        'buttons': {  # Add the button definitions here for this level
-            'left': [(10, 530)],
-            'right': [(475, 455)]
-        }
-    }
-}
-
-
 # Initialize players and levels
 p1_spawn = 175
 p2_spawn = 586
@@ -370,9 +400,12 @@ def check_goal(player1, player2, level):
         print(f'Went up to level {current_level_num + 1}!')
         transition_to_next_level(buttons=levels)
 
+buttons_left = levels[f'level1'].get('buttons', {}).get('left', [])
+buttons_right = levels[f'level1'].get('buttons', {}).get('right', [])
 
 async def main():
-    global current_level_num, left_level, right_level, player1, player2, previous_level_num, floor, max_levels, levels, FPS
+    global current_level_num, left_level, right_level, player1, player2, previous_level_num, floor, max_levels, levels, FPS, buttons_left, buttons_right
+
 
     # Game loop
     game_active = True
@@ -447,10 +480,20 @@ async def main():
             if current_level_num <= max_levels:
             
                 transition_to_next_level(buttons=levels)
+                buttons_left = levels[f'level{current_level_num}'].get('buttons', {}).get('left', [])
+                buttons_right = levels[f'level{current_level_num}'].get('buttons', {}).get('right', [])
 
             else:
                 print("You beat all levels!")
                 game_active = False
+
+        # Button Collision
+        button_col_left = Button(buttons_left, current_level_num, "left")
+        button_col_right = Button(buttons_right, current_level_num, "right")
+
+        # Check button collisions
+        button_col_left.check_collision(player1)
+        button_col_right.check_collision(player2)
 
         # Draw dividing line
         pygame.draw.line(screen, COLORS['divider'], (WINDOW_SIZE[0] // 2, 0), (WINDOW_SIZE[0] // 2, WINDOW_SIZE[1]), 5)
