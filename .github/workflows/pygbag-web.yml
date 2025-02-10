@@ -1,0 +1,56 @@
+name: Build Pygame Web App
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install pygbag
+        run: pip install pygbag
+
+      - name: Build Pygame App for Web
+        run: pygbag --build .
+
+      - name: Upload Built Web App as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pygame-web-build
+          path: dist/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Download Built Web App
+        uses: actions/download-artifact@v4
+        with:
+          name: pygame-web-build
+          path: dist/
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: gh-pages
+          folder: dist
