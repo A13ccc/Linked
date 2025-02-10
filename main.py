@@ -9,19 +9,59 @@ WINDOW_SIZE = (800, 600)
 screen = pygame.display.set_mode(WINDOW_SIZE)
 pygame.display.set_caption("Linked")
 
-# Colors I like
+# Colors
 COLORS = {
-    'bg': (245, 245, 245),      # Clean white-ish
-    'player1': (219, 58, 52),   # Red
-    'player2': (48, 63, 159),   # Blue
-    'platform': (67, 160, 71),  # Green
-    'divider': (33, 33, 33),    # Dark
-    'button_top': (255, 215, 0), # Gold
-    'button_bottom': (128, 128, 128) # Gray
+    'bg': (245, 245, 245),
+    'player1': (219, 58, 52),
+    'player2': (48, 63, 159),
+    'platform': (67, 160, 71),
+    'divider': (33, 33, 33),
+    'button_top': (255, 215, 0), 
+    'button_bottom': (128, 128, 128) 
+}
+
+# Levels
+levels = {
+    'level1': {
+        'left': [
+            (100, 70, 240, 70),
+            (120, 165, 290, 165),
+            (135, 260, 265, 260),
+            (155, 340, 315, 340),
+            (175, 455, 320, 455),
+            (100, 500, 240, 500)
+        ],
+        'right': [
+            (560, 70, 700, 70),
+            (520, 165, 690, 165),
+            (535, 260, 665, 260),
+            (495, 340, 655, 340),
+            (475, 455, 620, 455),
+            (500, 500, 700, 500)
+        ]
+    },
+    'level2': {
+        'left': [
+            (10, 530, 180, 530)
+        ],
+        'left_hidden': [
+            (200, 475, 375, 475)
+        ],
+        'right': [
+            (475, 455, 620, 455)
+        ],
+        'right_hidden': [
+            (675, 530, 800, 530)
+        ],
+        'buttons': {  # Add the button definitions here for this level
+            'left': [(10, 530)],
+            'right': [(475, 455)]
+        }
+    }
 }
 
 clock = pygame.time.Clock()
-FPS = 4096 * 200
+FPS = 60
 def transition_to_next_level():
     global current_level_num, left_level, right_level, player1, player2
 
@@ -52,6 +92,32 @@ def transition_to_next_level():
 previous_level_num = 0
 floor = 600
 
+def show_platforms(level_num, button):
+    # Get hidden platforms for the current level
+    hidden_plat_left = levels[f'level{level_num}'].get('left_hidden', [])
+    hidden_plat_right = levels[f'level{level_num}'].get('right_hidden', [])
+
+    print(f"Hidden Platforms Left: {hidden_plat_left}")
+    print(f"Hidden Platforms Right: {hidden_plat_right}")
+
+    print(button)
+     # Add hidden platforms to visible platforms list
+    if button == 'right' and level_num == 2:
+        for platform in hidden_plat_left:
+            if platform not in left_level.platforms:
+                left_level.platforms.append(platform)
+    elif button == 'left' and level_num == 2:
+        for platform in hidden_plat_right:
+            # Draw the platform
+            pygame.draw.line(screen, COLORS['platform'], (platform[0], platform[1]), (platform[2], platform[3]), 10)
+            # Check collision with player2
+            if player2.rect.clipline((platform[0], platform[1]), (platform[2], platform[3])):
+                player2.on_platform = True
+                player2.on_ground = True
+                player2.pos.y = platform[1] - player2.rect.height
+                player2.vel_y = 0
+            
+
 class Button:
     def __init__(self, button_positions, level_num, side):
         self.pressed = False
@@ -62,7 +128,6 @@ class Button:
         self.height = 10
 
     def draw(self, screen):
-        print(self.positions)
         for x, y in self.positions:
             color = (200, 100, 50) if not self.pressed else (100, 50, 25)  # Change color when pressed
             pygame.draw.rect(screen, color, (x + 3, y - 20, self.width, self.height))
@@ -76,7 +141,11 @@ class Button:
                 self.on_press()
 
     def on_press(self):
+        global current_level_num
+        global Levels
         print(f"Button pressed on Level {self.level_num} ({self.side} side)!")
+        if current_level_num == 2:
+            show_platforms(2, self.side)
 
 
 class Level:
@@ -269,47 +338,6 @@ class Player:
 
     def draw(self, screen):
         screen.blit(self.image, self.rect)
-
-
-# Level Definitions
-levels = {
-    'level1': {
-        'left': [
-            (100, 70, 240, 70),
-            (120, 165, 290, 165),
-            (135, 260, 265, 260),
-            (155, 340, 315, 340),
-            (175, 455, 320, 455),
-            (100, 500, 240, 500)
-        ],
-        'right': [
-            (560, 70, 700, 70),
-            (520, 165, 690, 165),
-            (535, 260, 665, 260),
-            (495, 340, 655, 340),
-            (475, 455, 620, 455),
-            (500, 500, 700, 500)
-        ]
-    },
-    'level2': {
-        'left': [
-            (10, 530, 180, 530)
-        ],
-        'left_hidden': [
-            (10, 530, 180, 530)
-        ],
-        'right': [
-            (475, 455, 620, 455)
-        ],
-        'right_hidden': [
-            ()
-        ],
-        'buttons': {  # Add the button definitions here for this level
-            'left': [(10, 530)],
-            'right': [(475, 455)]
-        }
-    }
-}
 
 
 # Initialize players and levels
