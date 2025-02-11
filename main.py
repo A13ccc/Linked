@@ -97,10 +97,6 @@ def show_platforms(level_num, button):
     hidden_plat_left = levels[f'level{level_num}'].get('left_hidden', [])
     hidden_plat_right = levels[f'level{level_num}'].get('right_hidden', [])
 
-    print(f"Hidden Platforms Left: {hidden_plat_left}")
-    print(f"Hidden Platforms Right: {hidden_plat_right}")
-
-    print(button)
      # Add hidden platforms to visible platforms list
     if button == 'right' and level_num == 2:
         for platform in hidden_plat_left:
@@ -116,6 +112,8 @@ def show_platforms(level_num, button):
                 player2.on_ground = True
                 player2.pos.y = platform[1] - player2.rect.height
                 player2.vel_y = 0
+                player2.gravity_on = False
+                print(player2.pos.y)
             
 
 class Button:
@@ -143,7 +141,6 @@ class Button:
     def on_press(self):
         global current_level_num
         global Levels
-        print(f"Button pressed on Level {self.level_num} ({self.side} side)!")
         if current_level_num == 2:
             show_platforms(2, self.side)
 
@@ -158,6 +155,8 @@ class Level:
         self.buttons = [Button(button_positions=buttons, level_num=num, side=side) for button in buttons]  # Create button instances
 
     def draw(self, screen):
+        
+
         # Draw platforms and goal line
         for platform in self.platforms:
             pygame.draw.line(screen, COLORS['platform'], (platform[0], platform[1]), (platform[2], platform[3]), 10)
@@ -490,8 +489,6 @@ async def main():
         # Button Collision
         button_col_left = Button(buttons_left, current_level_num, "left")
         button_col_right = Button(buttons_right, current_level_num, "right")
-
-        # Check button collisions
         button_col_left.check_collision(player1)
         button_col_right.check_collision(player2)
 
