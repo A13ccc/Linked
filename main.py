@@ -193,15 +193,17 @@ class Player:
         self.vel_y = 0
         self.vel_x = 0
         self.move_speed = 6
-        self.gravity = 0.09
+        self.gravity = 0.12
         self.gravity_on = True
-        self.jump_power = -4.7
+        self.jump_power = -5.4
         self.on_ground = False
         self.on_platform = False
         self.on_wall = [False, 'None', 0]
         self.num = num
 
     def move(self, keys, side):
+        global player2
+
         move_dir = -1 if side == "right" else 1
         self.vel_x = 0
         
@@ -228,7 +230,7 @@ class Player:
                     self.pos.x += self.move_speed * move_dir
 
         # Only apply jump if on ground
-        if keys[pygame.K_UP] and self.on_ground:
+        if keys[pygame.K_UP] and self.on_ground or keys[pygame.K_UP] and player2.pos.y == 490:
             self.vel_y = self.jump_power
             self.on_ground = False
             self.gravity_on = True
